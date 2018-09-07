@@ -11,9 +11,24 @@
 // define button set token
 #define SW_PIN 0
 
+WidgetLED led0(V0);
+WidgetLED led1(V1);
+WidgetLED led2(V2);
+WidgetLED led3(V3);
+WidgetLED led4(V4);
+const int btnPin0 = D0;
+const int btnPin1 = D1;
+const int btnPin2 = D2;
+const int btnPin3 = D3;
+const int btnPin4 = D4;
+char mqtt_server[40];
+char mqtt_port[6] = "8080";
+char blynk_token[33] = "YOUR_BLYNK_TOKEN";
 char auth[] = "34c0acad7fee4dc2b2d37d555e110eb9";
 char blynk_token_f[34] = "";
 char blynk_token_s[34] = "";
+int count = 0;
+int count1 = 0;
 File f;
 Ticker ticker;
 const char *filename = "/config.json";  // <- SD library uses 8.3 filenames
@@ -29,9 +44,60 @@ void tick1(){
   //toggle state
   int state = digitalRead(BUILTIN_LED);  // get the current state of GPIO1 pin
   digitalWrite(BUILTIN_LED, !state);     // set pin to the opposite state
-  delay(1500);
+  delay(10);
   digitalWrite(BUILTIN_LED, state);     // set pin to the opposite state
-  delay(1500);
+}
+
+boolean btnState0 = false;
+boolean btnState1 = false;
+boolean btnState2 = false;
+boolean btnState3 = false;
+boolean btnState4 = false;
+void buttonLedWidget(const int *btnPin,boolean *btnState,int Vo){
+  // Read button
+  boolean isPressed = (digitalRead(*btnPin) == LOW);
+
+  // If state has changed...
+  if (isPressed != *btnState) {
+    if (isPressed) {
+      switch(Vo){
+        case 0:
+          led0.on();
+        break;
+        case 1:
+          led1.on();
+        break;
+        case 2:
+          led2.on();
+        break;
+        case 3:
+          led3.on();
+        break;
+        case 4:
+          led4.on();
+        break;
+      }
+    } else {
+       switch(Vo){
+        case 0:
+          led0.off();
+        break;
+        case 1:
+          led1.off();
+        break;
+        case 2:
+          led2.off();
+        break;
+        case 3:
+          led3.off();
+        break;
+        case 4:
+          led4.off();
+        break;
+      }
+    }
+    *btnState = isPressed;
+  }
 }
 
 bool loadConfig(const char *filename){
@@ -110,6 +176,8 @@ bool loadConfig(const char *filename){
         strcpy(blynk_token_f, root["blynk_token"]);
         Serial.printf("blynk_token_f->%s<\n\r",blynk_token_f);
         Blynk.config(blynk_token_f);
+        Blynk.config(blynk_token_f,IPAddress(10,1,3,180),8080);
+        
         //Blynk.config(auth);                                             //Available                                         
         
       }
@@ -162,7 +230,11 @@ bool setWifiManager(){
   //here  "AutoConnectAP"
   //and goes into a blocking loop awaiting configuration
   WiFiManagerParameter custom_blynk_token("Blynk", "blynk token", blynk_token_s, 34);
+  WiFiManagerParameter custom_mqtt_server("server1", "mqtt server", mqtt_server, 40);
+  WiFiManagerParameter custom_mqtt_port("port1", "mqtt port", mqtt_port, 5);
   wifiManager.addParameter(&custom_blynk_token);
+  wifiManager.addParameter(&custom_mqtt_server);
+  wifiManager.addParameter(&custom_mqtt_port);
 
   wifiManager.autoConnect("AutoConnectAP");
   //or use this for auto generated name ESP + ChipID
@@ -174,19 +246,37 @@ bool setWifiManager(){
 
   const char* blynk_token1 = custom_blynk_token.getValue();
   strcpy(blynk_token_s, blynk_token1);
+
+    //read updated parameters
+  strcpy(mqtt_server, custom_mqtt_server.getValue());
+  strcpy(mqtt_port, custom_mqtt_port.getValue());
+  strcpy(blynk_token, custom_blynk_token.getValue());
+
+  Serial.printf("mqtt_server->%s<\n\r",mqtt_server);
+  Serial.printf("mqtt_port->%s<\n\r",mqtt_port);
+  Serial.printf("blynk_token->%s<\n\r",blynk_token);
+
+  
   Serial.printf("blynk_token_s->%s<\n\r",blynk_token_s);
 
   //if (strcmp(blynk_token_s, "BLYNK_TOKEN")){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
   if (strcmp(blynk_token_s, "")){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
+  //if (blynk_token_s == ""){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
     Serial.println("blynk_token is set");
     saveConfig(filename,blynk_token_s);
-    Blynk.config(blynk_token_s);
+    //Blynk.config(blynk_token_s);
+    Blynk.config(blynk_token_s,IPAddress(10,1,3,180),8080);
+    
   }else{
     Serial.println("blynk_token in file");  
     //Blynk.config(auth);
     loadConfig(filename);
   }
   return true;
+  
+}
+
+void morniterIO(){
   
 }
 
@@ -200,13 +290,28 @@ void setup() {
     Serial.println("SPIFFS opened: " + result);
     setWifiManager();
     ticker.detach(); 
-    ticker.attach(2, tick1);
     
 }
 
 void loop() {
     // put your main code here, to run repeatedly:
     Blynk.run();
+
+    if(++count >= 100000){
+      count = 0;
+      tick1();
+      //buttonLedWidget(&btnPin3,&btnState3,3);
+      //buttonLedWidget(int btnPin,boolean btnState,int Vo){
+    }
+
+    if(++count1 >= 1000){
+      count1 = 0;
+      buttonLedWidget(&btnPin0,&btnState0,0);
+      buttonLedWidget(&btnPin1,&btnState1,1);
+      buttonLedWidget(&btnPin2,&btnState2,2);
+      //buttonLedWidget(&btnPin3,&btnState3,3);
+      buttonLedWidget(&btnPin4,&btnState4,4);
+    }
     
   //reset saved settings
   if(digitalRead(SW_PIN) == LOW){ // Press button
