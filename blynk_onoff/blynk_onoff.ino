@@ -7,6 +7,7 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 #include <BlynkSimpleEsp8266.h>
+#include <EEPROM.h>
 
 // define button set token
 #define SW_PIN 0
@@ -22,13 +23,13 @@ const int btnPin2 = D2;
 const int btnPin3 = D3;
 const int btnPin4 = D4;
 char mqtt_server[40];
-char mqtt_port[6] = "8080";
-char blynk_token[33] = "YOUR_BLYNK_TOKEN";
+char mqtt_port[6] = "";
 char auth[] = "34c0acad7fee4dc2b2d37d555e110eb9";
 char blynk_token_f[34] = "";
 char blynk_token_s[34] = "";
 int count = 0;
 int count1 = 0;
+int addr = 0;
 File f;
 Ticker ticker;
 const char *filename = "/config.json";  // <- SD library uses 8.3 filenames
@@ -63,36 +64,56 @@ void buttonLedWidget(const int *btnPin,boolean *btnState,int Vo){
       switch(Vo){
         case 0:
           led0.on();
+          EEPROM.write(addr+0, 0);
+          EEPROM.commit();
         break;
         case 1:
           led1.on();
+          EEPROM.write(addr+1, 0);
+          EEPROM.commit();
         break;
         case 2:
           led2.on();
+          EEPROM.write(addr+2, 0);
+          EEPROM.commit();
         break;
         case 3:
           led3.on();
+          EEPROM.write(addr+3, 0);
+          EEPROM.commit();
         break;
         case 4:
           led4.on();
+          EEPROM.write(addr+4, 0);
+          EEPROM.commit();
         break;
       }
     } else {
        switch(Vo){
         case 0:
           led0.off();
+          EEPROM.write(addr+0, 1);
+          EEPROM.commit();
         break;
         case 1:
           led1.off();
+          EEPROM.write(addr+1, 1);
+          EEPROM.commit();
         break;
         case 2:
           led2.off();
+          EEPROM.write(addr+2, 1);
+          EEPROM.commit();
         break;
         case 3:
           led3.off();
+          EEPROM.write(addr+3, 1);
+          EEPROM.commit();
         break;
         case 4:
           led4.off();
+          EEPROM.write(addr+4, 1);
+          EEPROM.commit();
         break;
       }
     }
@@ -138,19 +159,22 @@ bool loadConfig(const char *filename){
       // Most of the time, you can rely on the implicit casts.
       // In other case, you can do root.set<long>("time", 1351824120);
       root["blynk_token"] = auth;
+      root["mqtt_server"] = "";
+      root["mqtt_port"] = "";
       // now write two lines in key/value style with  end-of-line characters
       
       // Serialize JSON to file
       if (serializeJson(doc, f) == 0) {
         Serial.println(F("Failed to write to file"));
       }
-    } else {
+    }else {
       // we could open the file
       while(f.available()) {
         //Lets read line by line from the file
         String line = f.readStringUntil('\n');
         Serial.println(line);
-
+        Serial.println("");
+        
         // Allocate the JSON document
         //
         // Inside the brackets, 200 is the RAM allocated to this document.
@@ -160,7 +184,7 @@ bool loadConfig(const char *filename){
         
         // Deserialize the JSON document
         DeserializationError error = deserializeJson(doc, line);
-      
+        
         // Test if parsing succeeds.
         if (error) {
           Serial.print(F("deserializeJson() failed: "));
@@ -174,20 +198,40 @@ bool loadConfig(const char *filename){
         //const char* blynk_token_f = root["blynk_token"];                //can not use
         //const char* blynk_token_f = root["blynk_token"];                //can not use
         strcpy(blynk_token_f, root["blynk_token"]);
+        strcpy(mqtt_server, root["mqtt_server"]);
+        strcpy(mqtt_port, root["mqtt_port"]);
+        
         Serial.printf("blynk_token_f->%s<\n\r",blynk_token_f);
-        Blynk.config(blynk_token_f);
-        Blynk.config(blynk_token_f,IPAddress(10,1,3,180),8080);
-        
-        //Blynk.config(auth);                                             //Available                                         
-        
+        Serial.printf("mqtt_server_f->%s<\n\r",mqtt_server);
+        Serial.printf("mqtt_port_f->%s<\n\r",mqtt_port);
+          
+        if (!mqtt_server[0]){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
+          Blynk.config(blynk_token_f);
+        }else{
+          char *p = mqtt_server;
+          char *str;
+          char *ip[5];
+          int i = 0;
+          while ((str = strtok_r(p, ".", &p)) != NULL){ // delimiter is the semicolon
+            //ip[i] = atoi(str);
+            ip[i] = str;
+            Serial.printf("str->%s<ip=%s\n\r",str,ip[i]);
+            i++;
+          }
+          if(i>2){
+            Blynk.config(blynk_token_f,IPAddress(atoi(ip[0]),atoi(ip[1]),atoi(ip[2]),atoi(ip[3])),atoi(&mqtt_port[0]));   
+          }else{
+            strcpy(mqtt_server, root["mqtt_server"]);
+            Blynk.config(blynk_token_f,mqtt_server,atoi(&mqtt_port[0]));   
+          }                                     
+        }
       }
-  
     }
     f.close();
     return true;
 }
 
-bool saveConfig(const char *filename,const char* blynk_token_in){
+bool saveConfig(const char *filename,const char* blynk_token_in,const char* mqtt_server_in,const char* mqtt_port_in){
   Serial.printf("saveConfig file name ->%s<\n\r",filename);
   //f = SPIFFS.open("/config5.json", "w");
   f = SPIFFS.open(filename, "w");
@@ -200,6 +244,8 @@ bool saveConfig(const char *filename,const char* blynk_token_in){
       JsonObject root = doc.to<JsonObject>();
 
       root["blynk_token"] = blynk_token_in;
+      root["mqtt_server"] = mqtt_server_in;
+      root["mqtt_port"] = mqtt_port_in;
       // now write two lines in key/value style with  end-of-line characters
       
       // Serialize JSON to file
@@ -212,7 +258,7 @@ bool saveConfig(const char *filename,const char* blynk_token_in){
 
 bool setWifiManager(){
   ticker.attach(0.2, tick);  // led toggle faster
-  Serial.printf("<<<- setWifiManager Start ->>>");
+  Serial.printf("<<<- setWifiManager Start ->>>\n\r");
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
   WiFiManager wifiManager;
@@ -230,8 +276,8 @@ bool setWifiManager(){
   //here  "AutoConnectAP"
   //and goes into a blocking loop awaiting configuration
   WiFiManagerParameter custom_blynk_token("Blynk", "blynk token", blynk_token_s, 34);
-  WiFiManagerParameter custom_mqtt_server("server1", "mqtt server", mqtt_server, 40);
-  WiFiManagerParameter custom_mqtt_port("port1", "mqtt port", mqtt_port, 5);
+  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
+  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 5);
   wifiManager.addParameter(&custom_blynk_token);
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
@@ -249,29 +295,47 @@ bool setWifiManager(){
 
     //read updated parameters
   strcpy(mqtt_server, custom_mqtt_server.getValue());
-  strcpy(mqtt_port, custom_mqtt_port.getValue());
-  strcpy(blynk_token, custom_blynk_token.getValue());
+  const char* mqtt_port1 = custom_mqtt_port.getValue();
+  strcpy(mqtt_port, mqtt_port1);
 
   Serial.printf("mqtt_server->%s<\n\r",mqtt_server);
   Serial.printf("mqtt_port->%s<\n\r",mqtt_port);
-  Serial.printf("blynk_token->%s<\n\r",blynk_token);
-
-  
   Serial.printf("blynk_token_s->%s<\n\r",blynk_token_s);
 
   //if (strcmp(blynk_token_s, "BLYNK_TOKEN")){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
   if (strcmp(blynk_token_s, "")){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
   //if (blynk_token_s == ""){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
     Serial.println("blynk_token is set");
-    saveConfig(filename,blynk_token_s);
+    saveConfig(filename,blynk_token_s,mqtt_server,mqtt_port);
     //Blynk.config(blynk_token_s);
-    Blynk.config(blynk_token_s,IPAddress(10,1,3,180),8080);
-    
+     if (!mqtt_server[0]){  //blynk_token_s == "BLYNK_TOKEN" use auth from file 
+        Blynk.config(blynk_token_s);
+     }else{
+      //IP Blynk Server = 188.166.206.43
+      char *p = mqtt_server;
+      char *str;
+      char *ip[5];
+      int i = 0;
+      while ((str = strtok_r(p, ".", &p)) != NULL){ // delimiter is the semicolon
+        //ip[i] = atoi(str);
+        ip[i] = str;
+        Serial.printf("str->%s<ip=%s\n\r",str,ip[i]);
+        i++;
+      }
+      if(i>2){
+        Blynk.config(blynk_token_s,IPAddress(atoi(ip[0]),atoi(ip[1]),atoi(ip[2]),atoi(ip[3])),atoi(&mqtt_port[0]));   
+      }else{
+        strcpy(mqtt_server, custom_mqtt_server.getValue());
+        Serial.printf("mqtt_server_domain=%s\n\r",mqtt_server);
+        Blynk.config(blynk_token_s,mqtt_server,atoi(&mqtt_port[0]));   
+      }                                       
+   }
   }else{
     Serial.println("blynk_token in file");  
     //Blynk.config(auth);
     loadConfig(filename);
   }
+  ticker.detach(); 
   return true;
   
 }
@@ -280,16 +344,37 @@ void morniterIO(){
   
 }
 
+void io_refress(){
+    digitalWrite(D0,EEPROM.read(addr+0));
+    digitalWrite(D1,EEPROM.read(addr+1));
+    digitalWrite(D2,EEPROM.read(addr+2));
+    digitalWrite(D4,EEPROM.read(addr+4));
+//    Serial.printf("EEPROM.read(addr+0)>%d\n\r",EEPROM.read(addr+0));
+//    Serial.printf("EEPROM.read(addr+1)>%d\n\r",EEPROM.read(addr+1));
+//    Serial.printf("EEPROM.read(addr+2)>%d\n\r",EEPROM.read(addr+2));
+//    Serial.printf("EEPROM.read(addr+4)>%d\n\r",EEPROM.read(addr+4));  
+}
+
 void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
     while (!Serial) continue;
+    Serial.println("");
     pinMode(SW_PIN, INPUT_PULLUP);  
+    pinMode(D0, OUTPUT); 
+    pinMode(D1, OUTPUT); 
+    pinMode(D2, OUTPUT); 
+    pinMode(D4, OUTPUT); 
+    EEPROM.begin(512);
+    io_refress();
     // always use this to "mount" the filesystem
     bool result = SPIFFS.begin();
     Serial.println("SPIFFS opened: " + result);
     setWifiManager();
     ticker.detach(); 
+    io_refress();
+
+    
     
 }
 
