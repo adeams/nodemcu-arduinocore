@@ -12,28 +12,20 @@
 // define button set token
 #define SW_PIN 0
 
-WidgetLED led0(V0);
-WidgetLED led1(V1);
-WidgetLED led2(V2);
-WidgetLED led3(V3);
-WidgetLED led4(V4);
-WidgetLED led5(V5);
-WidgetLED led6(V6);
-WidgetLED led7(V7);
-WidgetLED led8(V8);
-WidgetLED led9(V9);
-WidgetLED led10(V10);
 const int btnPin0 = D0;
 const int btnPin1 = D1;
 const int btnPin2 = D2;
-const int btnPin3 = D3;
-const int btnPin4 = D4;
-const int btnPin5 = D5;
-const int btnPin6 = D6;
-const int btnPin7 = D7;
-const int btnPin8 = D8;
-const int btnPin9 = D9;
-const int btnPin10 = D10;
+const int btnPin3 = D4;
+const int btnPin4 = D5;
+const int btnPin5 = D6;
+const int btnPin6 = D7;
+const int btnPin7 = D8;
+const int btnPin8 = D9;
+const int btnPin = D10;
+
+int ledState = LOW;
+int btnState = HIGH;
+int btnStateConfig = HIGH;
 
 boolean btnState0 = false;
 boolean btnState1 = false;
@@ -57,8 +49,151 @@ int count1 = 0;
 int addr = 0;
 File f;
 Ticker ticker;
+BlynkTimer timer;
+void checkPhysicalButton();
 const char *filename = "/config.json";  // <- SD library uses 8.3 filenames
 
+// Every time we connect to the cloud...
+BLYNK_CONNECTED() {
+  // Request the latest state from the server
+  Blynk.syncVirtual(V0);
+  Blynk.syncVirtual(V1);
+  Blynk.syncVirtual(V2);
+  Blynk.syncVirtual(V3);
+  Blynk.syncVirtual(V4);
+  Blynk.syncVirtual(V5);
+  Blynk.syncVirtual(V6);
+  Blynk.syncVirtual(V7);
+  Blynk.syncVirtual(V8);
+
+  // Alternatively, you could override server state using:
+  //Blynk.virtualWrite(V2, ledState);
+  Serial.println("BLYNK_CONNECTED");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V0) {
+  ledState = param.asInt();
+  digitalWrite(btnPin0, ledState);
+  EEPROM.write(addr+0, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV0");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V1) {
+  ledState = param.asInt();
+  digitalWrite(btnPin1, ledState);
+  EEPROM.write(addr+1, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV1");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V2) {
+  ledState = param.asInt();
+  digitalWrite(btnPin2, ledState);
+  EEPROM.write(addr+2, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV2");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V3) {
+  ledState = param.asInt();
+  digitalWrite(btnPin3, ledState);
+  EEPROM.write(addr+3, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV3");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V4) {
+  ledState = param.asInt();
+  digitalWrite(btnPin4, ledState);
+  EEPROM.write(addr+4, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV4");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V5) {
+  ledState = param.asInt();
+  digitalWrite(btnPin5, ledState);
+  EEPROM.write(addr+5, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV5");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V6) {
+  ledState = param.asInt();
+  digitalWrite(btnPin6, ledState);
+  EEPROM.write(addr+6, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV6");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V7) {
+  ledState = param.asInt();
+  digitalWrite(btnPin7, ledState);
+  EEPROM.write(addr+7, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV7");
+}
+
+// When App button is pushed - switch the state
+BLYNK_WRITE(V8) {
+  ledState = param.asInt();
+  digitalWrite(btnPin8, ledState);
+  EEPROM.write(addr+8, ledState);
+  EEPROM.commit();
+  Serial.println("BLYNK_WRITEV8");
+}
+
+void checkPhysicalButton(){
+  if (digitalRead(btnPin) == LOW) {
+    // btnState is used to avoid sequential toggles
+    if (btnState != LOW) {
+
+      // Toggle LED state
+      ledState = !ledState;
+      digitalWrite(btnPin0, ledState);
+      digitalWrite(btnPin3, !ledState);
+      // Update Button Widget
+      Blynk.virtualWrite(V0, ledState);
+      Blynk.virtualWrite(V3, !ledState);
+    }
+    btnState = LOW;
+    Serial.println("LOW");
+  } else {
+    //Serial.println("HIGH");
+    btnState = HIGH;
+  }
+}
+
+int countIsConfig = 5; 
+void checkButtonIsConfig(){
+  if (digitalRead(SW_PIN) == LOW) {
+    // btnState is used to avoid sequential toggles
+    if (btnStateConfig != LOW) {
+      Serial.printf("Reset wifi config?:\n\r");
+    }
+    Serial.print(String(countIsConfig)+" "); 
+    if((--countIsConfig) <= 0){
+      setWifiManager(); 
+      ticker.detach(); 
+    }
+    btnStateConfig = LOW;
+  } else {
+    if (btnStateConfig != HIGH) {
+      Serial.printf("\n\rexit wifi config\n\r");
+    }
+    btnStateConfig = HIGH;
+    countIsConfig = 5;
+  }
+}
 
 void tick(){
   //toggle state
@@ -74,132 +209,132 @@ void tick1(){
   digitalWrite(BUILTIN_LED, state);     // set pin to the opposite state
 }
 
-void buttonLedWidget(const int *btnPin,boolean *btnState,int Vo){
-  // Read button
-  boolean isPressed = (digitalRead(*btnPin) == LOW);
-
-  // If state has changed...
-  if (isPressed != *btnState) {
-    if (isPressed) {
-      switch(Vo){
-        case 0:
-          led0.on();
-          EEPROM.write(addr+0, 0);
-          EEPROM.commit();
-        break;
-        case 1:
-          led1.on();
-          EEPROM.write(addr+1, 0);
-          EEPROM.commit();
-        break;
-        case 2:
-          led2.on();
-          EEPROM.write(addr+2, 0);
-          EEPROM.commit();
-        break;
-        case 3:
-          led3.on();
-          EEPROM.write(addr+3, 0);
-          EEPROM.commit();
-        break;
-        case 4:
-          led4.on();
-          EEPROM.write(addr+4, 0);
-          EEPROM.commit();
-        break;
-        case 5:
-          led5.on();
-          EEPROM.write(addr+5, 0);
-          EEPROM.commit();
-        break;
-        case 6:
-          led6.on();
-          EEPROM.write(addr+6, 0);
-          EEPROM.commit();
-        break;
-        case 7:
-          led7.on();
-          EEPROM.write(addr+7, 0);
-          EEPROM.commit();
-        break;
-        case 8:
-          led8.on();
-          EEPROM.write(addr+8, 0);
-          EEPROM.commit();
-        break;
-        case 9:
-          led9.on();
-          EEPROM.write(addr+9, 0);
-          EEPROM.commit();
-        break;
-        case 10:
-          led10.on();
-          EEPROM.write(addr+10, 0);
-          EEPROM.commit();
-        break;
-      }
-    } else {
-       switch(Vo){
-        case 0:
-          led0.off();
-          EEPROM.write(addr+0, 1);
-          EEPROM.commit();
-        break;
-        case 1:
-          led1.off();
-          EEPROM.write(addr+1, 1);
-          EEPROM.commit();
-        break;
-        case 2:
-          led2.off();
-          EEPROM.write(addr+2, 1);
-          EEPROM.commit();
-        break;
-        case 3:
-          led3.off();
-          EEPROM.write(addr+3, 1);
-          EEPROM.commit();
-        break;
-        case 4:
-          led4.off();
-          EEPROM.write(addr+4, 1);
-          EEPROM.commit();
-        break;
-        case 5:
-          led5.off();
-          EEPROM.write(addr+5, 1);
-          EEPROM.commit();
-        break;
-        case 6:
-          led6.off();
-          EEPROM.write(addr+6, 1);
-          EEPROM.commit();
-        break;
-        case 7:
-          led7.off();
-          EEPROM.write(addr+7, 1);
-          EEPROM.commit();
-        break;
-        case 8:
-          led8.off();
-          EEPROM.write(addr+8, 1);
-          EEPROM.commit();
-        break;
-        case 9:
-          led9.off();
-          EEPROM.write(addr+9, 1);
-          EEPROM.commit();
-        break;
-        case 10:
-          led10.off();
-          EEPROM.write(addr+10, 1);
-          EEPROM.commit();
-        break;
-      }
-    }
-    *btnState = isPressed;
-  }
-}
+//void buttonLedWidget(const int *btnPin,boolean *btnState,int Vo){
+//  // Read button
+//  boolean isPressed = (digitalRead(*btnPin) == LOW);
+//
+//  // If state has changed...
+//  if (isPressed != *btnState) {
+//    if (isPressed) {
+//      switch(Vo){
+//        case 0:
+//          led0.on();
+//          EEPROM.write(addr+0, 0);
+//          EEPROM.commit();
+//        break;
+//        case 1:
+//          led1.on();
+//          EEPROM.write(addr+1, 0);
+//          EEPROM.commit();
+//        break;
+//        case 2:
+//          led2.on();
+//          EEPROM.write(addr+2, 0);
+//          EEPROM.commit();
+//        break;
+//        case 3:
+//          led3.on();
+//          EEPROM.write(addr+3, 0);
+//          EEPROM.commit();
+//        break;
+//        case 4:
+//          led4.on();
+//          EEPROM.write(addr+4, 0);
+//          EEPROM.commit();
+//        break;
+//        case 5:
+//          led5.on();
+//          EEPROM.write(addr+5, 0);
+//          EEPROM.commit();
+//        break;
+//        case 6:
+//          led6.on();
+//          EEPROM.write(addr+6, 0);
+//          EEPROM.commit();
+//        break;
+//        case 7:
+//          led7.on();
+//          EEPROM.write(addr+7, 0);
+//          EEPROM.commit();
+//        break;
+//        case 8:
+//          led8.on();
+//          EEPROM.write(addr+8, 0);
+//          EEPROM.commit();
+//        break;
+//        case 9:
+//          led9.on();
+//          EEPROM.write(addr+9, 0);
+//          EEPROM.commit();
+//        break;
+//        case 10:
+//          led10.on();
+//          EEPROM.write(addr+10, 0);
+//          EEPROM.commit();
+//        break;
+//      }
+//    } else {
+//       switch(Vo){
+//        case 0:
+//          led0.off();
+//          EEPROM.write(addr+0, 1);
+//          EEPROM.commit();
+//        break;
+//        case 1:
+//          led1.off();
+//          EEPROM.write(addr+1, 1);
+//          EEPROM.commit();
+//        break;
+//        case 2:
+//          led2.off();
+//          EEPROM.write(addr+2, 1);
+//          EEPROM.commit();
+//        break;
+//        case 3:
+//          led3.off();
+//          EEPROM.write(addr+3, 1);
+//          EEPROM.commit();
+//        break;
+//        case 4:
+//          led4.off();
+//          EEPROM.write(addr+4, 1);
+//          EEPROM.commit();
+//        break;
+//        case 5:
+//          led5.off();
+//          EEPROM.write(addr+5, 1);
+//          EEPROM.commit();
+//        break;
+//        case 6:
+//          led6.off();
+//          EEPROM.write(addr+6, 1);
+//          EEPROM.commit();
+//        break;
+//        case 7:
+//          led7.off();
+//          EEPROM.write(addr+7, 1);
+//          EEPROM.commit();
+//        break;
+//        case 8:
+//          led8.off();
+//          EEPROM.write(addr+8, 1);
+//          EEPROM.commit();
+//        break;
+//        case 9:
+//          led9.off();
+//          EEPROM.write(addr+9, 1);
+//          EEPROM.commit();
+//        break;
+//        case 10:
+//          led10.off();
+//          EEPROM.write(addr+10, 1);
+//          EEPROM.commit();
+//        break;
+//      }
+//    }
+//    *btnState = isPressed;
+//  }
+//}
 
 bool loadConfig(const char *filename){
 //  // always use this to "mount" the filesystem
@@ -420,25 +555,22 @@ bool setWifiManager(){
   
 }
 
-void morniterIO(){
-  
-}
 
 void io_refress(){
-    digitalWrite(D0,EEPROM.read(addr+0));
-    digitalWrite(D1,EEPROM.read(addr+1));
-    digitalWrite(D2,EEPROM.read(addr+2));
-    digitalWrite(D4,EEPROM.read(addr+4));
-    digitalWrite(D5,EEPROM.read(addr+5));
-    digitalWrite(D6,EEPROM.read(addr+6));
-    digitalWrite(D7,EEPROM.read(addr+7));
-    digitalWrite(D8,EEPROM.read(addr+8));
-    digitalWrite(D9,EEPROM.read(addr+9));
+    digitalWrite(btnPin0,EEPROM.read(addr+0));
+    digitalWrite(btnPin1,EEPROM.read(addr+1));
+    digitalWrite(btnPin2,EEPROM.read(addr+2));
+    digitalWrite(btnPin3,EEPROM.read(addr+3));
+    digitalWrite(btnPin4,EEPROM.read(addr+4));
+    digitalWrite(btnPin5,EEPROM.read(addr+5));
+    digitalWrite(btnPin6,EEPROM.read(addr+6));
+    digitalWrite(btnPin7,EEPROM.read(addr+7));
+    digitalWrite(btnPin8,EEPROM.read(addr+8));
     //digitalWrite(D10,EEPROM.read(addr+10));
-//    Serial.printf("EEPROM.read(addr+0)>%d\n\r",EEPROM.read(addr+0));
-//    Serial.printf("EEPROM.read(addr+1)>%d\n\r",EEPROM.read(addr+1));
-//    Serial.printf("EEPROM.read(addr+2)>%d\n\r",EEPROM.read(addr+2));
-//    Serial.printf("EEPROM.read(addr+4)>%d\n\r",EEPROM.read(addr+4));  
+    Serial.printf("EEPROM.read(addr+0)>%d\n\r",EEPROM.read(addr+0));
+    Serial.printf("EEPROM.read(addr+1)>%d\n\r",EEPROM.read(addr+1));
+    Serial.printf("EEPROM.read(addr+2)>%d\n\r",EEPROM.read(addr+2));
+    Serial.printf("EEPROM.read(addr+4)>%d\n\r",EEPROM.read(addr+4));  
 }
 
 void setup() {
@@ -446,17 +578,17 @@ void setup() {
     Serial.begin(115200);
     while (!Serial) continue;
     Serial.println("");
-    pinMode(SW_PIN, INPUT_PULLUP);  
-    pinMode(D0, OUTPUT); 
-    pinMode(D1, OUTPUT); 
-    pinMode(D2, OUTPUT); 
-    pinMode(D4, OUTPUT); 
-    pinMode(D5, OUTPUT); 
-    pinMode(D6, OUTPUT); 
-    pinMode(D7, OUTPUT); 
-    pinMode(D8, OUTPUT);
-    pinMode(D9, OUTPUT); 
-    //pinMode(D10, OUTPUT);
+    pinMode(SW_PIN, INPUT_PULLUP); 
+    pinMode(btnPin, INPUT_PULLUP); 
+    pinMode(btnPin0, OUTPUT);
+    pinMode(btnPin1, OUTPUT);
+    pinMode(btnPin2, OUTPUT);
+    pinMode(btnPin3, OUTPUT);
+    pinMode(btnPin4, OUTPUT);
+    pinMode(btnPin5, OUTPUT);
+    pinMode(btnPin6, OUTPUT);
+    pinMode(btnPin7, OUTPUT);
+    pinMode(btnPin8, OUTPUT);
     EEPROM.begin(512);
     io_refress();
     // always use this to "mount" the filesystem
@@ -465,14 +597,16 @@ void setup() {
     setWifiManager();
     ticker.detach(); 
     io_refress();
-
-    
-    
+  
+    // Setup a function to be called every 100 ms
+    timer.setInterval(100L, checkPhysicalButton);
+    timer.setInterval(1000L, checkButtonIsConfig);
 }
 
 void loop() {
     // put your main code here, to run repeatedly:
     Blynk.run();
+    timer.run();
 
     if(++count >= 100000){
       count = 0;
@@ -481,35 +615,21 @@ void loop() {
       //buttonLedWidget(int btnPin,boolean btnState,int Vo){
     }
 
-    if(++count1 >= 500){
-      count1 = 0;
-      buttonLedWidget(&btnPin0,&btnState0,0);
-      buttonLedWidget(&btnPin1,&btnState1,1);
-      buttonLedWidget(&btnPin2,&btnState2,2);
-      //buttonLedWidget(&btnPin3,&btnState3,3);
-      buttonLedWidget(&btnPin4,&btnState4,4);
-      buttonLedWidget(&btnPin5,&btnState5,5);
-      buttonLedWidget(&btnPin6,&btnState6,6);
-      buttonLedWidget(&btnPin7,&btnState7,7);
-      buttonLedWidget(&btnPin8,&btnState8,8);
-      buttonLedWidget(&btnPin9,&btnState9,9);
-      buttonLedWidget(&btnPin10,&btnState10,10);
-    }
     
-  //reset saved settings
-  if(digitalRead(SW_PIN) == LOW){ // Press button
-    delay(1000); 
-    int i = 5;
-    Serial.printf("Reset wifi config?:\n\r");
-    while(digitalRead(SW_PIN) == LOW){
-      Serial.print(String(i)+" "); 
-      delay(1000);
-      if((--i) == 0){
-        setWifiManager(); 
-        ticker.detach(); 
-      }
-    }
-    Serial.printf("\n\rexit wifi config\n\r");
-  } 
+//  //reset saved settings
+//  if(digitalRead(SW_PIN) == LOW){ // Press button
+//    delay(1000); 
+//    int i = 5;
+//    Serial.printf("Reset wifi config?:\n\r");
+//    while(digitalRead(SW_PIN) == LOW){
+//      Serial.print(String(i)+" "); 
+//      delay(1000);
+//      if((--i) == 0){
+//        setWifiManager(); 
+//        ticker.detach(); 
+//      }
+//    }
+//    Serial.printf("\n\rexit wifi config\n\r");
+//  } 
     
 }
