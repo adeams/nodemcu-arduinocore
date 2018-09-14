@@ -14,9 +14,9 @@
 
 //button Hardware
 //const int btnPin0 = D0;
-const int btnPin1 = D6;
-const int btnPin2 = D7;
-const int btnPin3 = D5;
+const int btnPin1 = D5;
+const int btnPin2 = D6;
+const int btnPin3 = D7;
 const int btnPin4 = D9;
 
 //button Virtual
@@ -75,36 +75,36 @@ BLYNK_CONNECTED() {
 
 // When App button is pushed - switch the state
 BLYNK_WRITE(V1) {
-  ledState = param.asInt();
-  digitalWrite(AppBtn1, ledState);
-  EEPROM.write(addr+1, ledState);
+  ledState1 = param.asInt();
+  digitalWrite(AppBtn1, ledState1);
+  EEPROM.write(addr+1, ledState1);
   EEPROM.commit();
   Serial.println("BLYNK_WRITEV1");
 }
 
 // When App button is pushed - switch the state
 BLYNK_WRITE(V2) {
-  ledState = param.asInt();
-  digitalWrite(AppBtn2, ledState);
-  EEPROM.write(addr+2, ledState);
+  ledState2 = param.asInt();
+  digitalWrite(AppBtn2, ledState2);
+  EEPROM.write(addr+2, ledState2);
   EEPROM.commit();
   Serial.println("BLYNK_WRITEV2");
 }
 
 // When App button is pushed - switch the state
 BLYNK_WRITE(V3) {
-  ledState = param.asInt();
-  digitalWrite(AppBtn3, ledState);
-  EEPROM.write(addr+3, ledState);
+  ledState3 = param.asInt();
+  digitalWrite(AppBtn3, ledState3);
+  EEPROM.write(addr+3, ledState3);
   EEPROM.commit();
   Serial.println("BLYNK_WRITEV3");
 }
 
 // When App button is pushed - switch the state
 BLYNK_WRITE(V4) {
-  ledState = param.asInt();
-  digitalWrite(AppBtn4, ledState);
-  EEPROM.write(addr+4, ledState);
+  ledState4 = param.asInt();
+  digitalWrite(AppBtn4, ledState4);
+  EEPROM.write(addr+4, ledState4);
   EEPROM.commit();
   Serial.println("BLYNK_WRITEV4");
 }
@@ -121,21 +121,25 @@ void checkPhysicalButton(const int *btnPin,int *btnState,bool *ledState,int vo){
 
       // Toggle LED state
       *ledState = !(*ledState);
-      digitalWrite(*btnPin, *ledState);
+      //digitalWrite(*btnPin, *ledState);
       // Update Button Widget
       Serial.printf("press button VO%d\n\r",vo);
       switch(vo){
         case 1:
            Blynk.virtualWrite(V1, *ledState);
+           digitalWrite(AppBtn1, *ledState);
         break;
         case 2:
            Blynk.virtualWrite(V2, *ledState);
+           digitalWrite(AppBtn2, *ledState);
         break;
         case 3:
            Blynk.virtualWrite(V3, *ledState);
+           digitalWrite(AppBtn3, *ledState);
         break;
         case 4:
            Blynk.virtualWrite(V4, *ledState);
+           digitalWrite(AppBtn4, *ledState);
         break;
         }
     }
@@ -534,10 +538,15 @@ bool setWifiManager(){
 
 
 void io_refress(){
-    digitalWrite(AppBtn1,EEPROM.read(addr+1));
-    digitalWrite(AppBtn2,EEPROM.read(addr+2));
-    digitalWrite(AppBtn3,EEPROM.read(addr+3));
-    digitalWrite(AppBtn4,EEPROM.read(addr+4));
+    ledState1 = EEPROM.read(addr+1);
+    ledState2 = EEPROM.read(addr+2);
+    ledState3 = EEPROM.read(addr+3);
+    ledState4 = EEPROM.read(addr+4);
+     
+    digitalWrite(AppBtn1,ledState1);
+    digitalWrite(AppBtn2,ledState2);
+    digitalWrite(AppBtn3,ledState3);
+    digitalWrite(AppBtn4,ledState4);
     //digitalWrite(D10,EEPROM.read(addr+10));
 //    Serial.printf("EEPROM.read(addr+0)>%d\n\r",EEPROM.read(addr+0));
 //    Serial.printf("EEPROM.read(addr+1)>%d\n\r",EEPROM.read(addr+1));
